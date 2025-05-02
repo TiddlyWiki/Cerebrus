@@ -9,6 +9,7 @@
  * - `PR_NUMBER`: The pull request number to validate.
  * - `REPO`: The repository in the format "owner/repo".
  * - `BASE_REF`: The base branch of the pull request.
+ * - `DRY_RUN`: Optional. If set to "true", will only log the results instead of posting comments.
  *
  * @example
  * // Running the script outside of GitHub Actions
@@ -17,23 +18,19 @@
  * //    PR_NUMBER=42
  * //    REPO=my-user/my-repo
  * //    BASE_REF=tiddlywiki-com
+ * //    DRY_RUN=true
  * 
  * // 2. Run the script in your terminal:
  * node validate-pr.js
  */
 
 const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
+const dryRun = process.env.DRY_RUN === 'true';
+const CerebrusIdentifierComment = "<!-- Cerebrus PR report -->";
+
 const path = require('path');
 const PRCommentUtils = require(path.resolve(__dirname, 'pr-comment-utils'));
-
-const ERROR_TAG = "<!-- editions-folder-error -->";
-const WARNING_TAG = "<!-- editions-folder-warning -->";
-
-const ERROR_MESSAGE = `${ERROR_TAG}
-❌ **Error**: PRs targeting the \`tiddlywiki-com\` branch must not contain any files outside the \`/editions\` folder.`;
-
-const WARNING_MESSAGE = `${WARNING_TAG}
-⚠️ **Warning**: This PR only modifies documentation (within \`/editions\`). If the changes do not relate to the prerelease, please consider targeting the \`master\` branch instead.`;
+const rules = require('./rules');
 
 async function run() {
 	let octokit;
@@ -66,37 +63,56 @@ async function run() {
 		const utils = new PRCommentUtils(octokit);
 		const changedFiles = await utils.getChangedFiles(owner, repoName, prNumber);
 
+		if(dryRun) {
+			console.log(`ℹ️ [dry-run] Base branch: ${baseRef}`);
+			console.log(`ℹ️ [dry-run] Changed files:\n- ${changedFiles.join('\n- ')}`);
+		}
+
+		/*
 		if(changedFiles.length === 1 && changedFiles[0].startsWith("licenses/")) {
 			return;
 		}
+		*/
 
-		let messageToPost = '';
-		if(baseRef === 'tiddlywiki-com') {
-			const allInEditions = changedFiles.every(file => file.startsWith('editions/'));
-			if(!allInEditions) {
-				messageToPost = ERROR_MESSAGE;
+		let messages = [];
+
+		function processRule(rule, baseRef, changedFiles) {
+			const matched = rule.condition(baseRef, changedFiles);
+			if(dryRun) {
+				console.log(`🔍 [dry-run] Processed rule: "${rule.name}" — matched: ${matched}`);
 			}
-		} else if(baseRef === 'master') {
-			const allInEditions = changedFiles.every(file => file.startsWith('editions/'));
-			if(allInEditions) {
-				messageToPost = WARNING_MESSAGE;
-			} 
+			if(matched) {
+				messages.push(`\n\n${rule.message}`);
+				if(rule.stopProcessing) {
+					return true;
+				}
+			}
+			return false;
+		};
+
+		let abort = false;
+		for(const rule of rules) {
+			if(processRule(rule, baseRef, changedFiles)) {
+				abort = true;
+				break
+			};
 		}
 
-		const existingError = await utils.getExistingComment(owner, repoName, prNumber, ERROR_TAG);
-		if(existingError) {
-			await utils.deleteComment(owner, repoName, prNumber, existingError.id);
+		// delete the comment if one already exists
+		const existing = await utils.getExistingComment(owner, repoName, prNumber, CerebrusIdentifierComment);
+		if(existing && !dryRun) {
+			await utils.deleteComment(owner, repoName, prNumber, existing.id);
 		}
 
-		const existingWarning = await utils.getExistingComment(owner, repoName, prNumber, WARNING_TAG);
-		if(existingWarning) {
-			await utils.deleteComment(owner, repoName, prNumber, existingWarning.id);
+		if(messages.length && !abort) {
+			messages.unshift(CerebrusIdentifierComment);
+			if(dryRun) {
+				console.log(`💬 [dry-run] Would post comment:\n${messages.join("\n")}`);
+			} else {
+				await utils.postComment(owner, repoName, prNumber, messages.join("\n"));
+			}
 		}
-
-		if(messageToPost) {
-			await utils.postComment(owner, repoName, prNumber, messageToPost);
-		}
-
+		
 	} catch (err) {
 		if (core) {
 			core.setFailed(`Action failed: ${err.message}`);

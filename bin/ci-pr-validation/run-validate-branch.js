@@ -15,6 +15,26 @@ const { execSync } = require('child_process');
 const path = require('path');
 const https = require('https');
 
+function printHelp() {
+	console.log(`
+Usage:
+  node run-validate-branch.js --pr <number> --repo <owner/repo> [--dry-run true]
+
+Options:
+  --pr         Pull request number to validate (required)
+  --repo       Repository in the format "owner/repo" (required)
+  --dry-run    If set to true, validation will be performed without posting comments (default: false)
+  --help, -h   Show this help message
+
+Environment:
+  GITHUB_PERSONAL_ACCESS_TOKEN  GitHub token used to authenticate (required)
+
+Example:
+  export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_YourTokenHere
+  node run-validate-branch.js --pr 42 --repo user/repo --dry-run true
+	`);
+}
+
 function parseArgs() {
 	const args = process.argv.slice(2);
 	const options = {};
@@ -67,10 +87,12 @@ function fetchPRBase(repo, prNumber, token) {
 	const options = parseArgs();
 	const prNumber = options.pr;
 	const repo = options.repo;
+	const dryRun = options['dry-run'] === 'true';
 	const token = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
 
 	if(!prNumber || !repo) {
-		console.error('❌ Usage: node run-validate-branch.js --pr <number> --repo <owner/repo>');
+		console.error('❌ Usage error: --pr and --repo are required.\n');
+		printHelp();
 		process.exit(1);
 	}
 
@@ -96,6 +118,7 @@ function fetchPRBase(repo, prNumber, token) {
 			PR_NUMBER: prNumber,
 			REPO: repo,
 			BASE_REF: baseRef,
+			DRY_RUN: dryRun.toString(),
 			GITHUB_PERSONAL_ACCESS_TOKEN: token
 		},
 		stdio: 'inherit'

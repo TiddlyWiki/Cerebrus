@@ -7,6 +7,8 @@ This GitHub Action validates pull requests to ensure they meet specific conditio
 - ✅ Path validation rules tied to target branches
   - Enforcing that PRs targeting `tiddlywiki-com` only touch files under `/editions`
   - Warning when PRs targeting `master` only contain documentation changes in `/editions`
+  . Warning when PRs signing the CLA contain other files or target a branch other than `tiddlywiki-com`
+  - Warning when PRs modify auto-generated files
 - 🔁 Posts informative comments directly on the PR
 - 🖥️ Usable both in GitHub Actions and as a standalone CLI tool
 - 🔐 Uses either the GitHub Actions token or a Personal Access Token
