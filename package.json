@@ -1,0 +1,19 @@
+{
+	"name": "cerebrus",
+	"version": "1.0.0",
+	"description": "GitHub Action and CLI to validate PR file paths based on branch rules (e.g., 'tiddlywiki-com' and 'master').",
+	"bin": {
+		"validate-pr": "./run-validate-branch.js"
+	},
+	"main": "bin/ci-pr-validation/validate-branch.js",
+	"scripts": {
+		"validate": "node bin/ci-pr-validation/run-validate-branch.js"
+	},
+	"author": "Saq Imtiaz",
+	"license": "MIT",
+	"dependencies": {
+		"@actions/core": "^1.10.0",
+		"@actions/github": "^6.0.0",
+		"@octokit/rest": "^20.0.0"
+	}
+}
