@@ -55,7 +55,7 @@ const rules = [
 		  const hasLicenseFile = changedFiles.some(file => file.startsWith('licenses/'));
 		  
 		  // If the PR has more than one file and contains a file in `licenses/`, trigger the rule
-		  if ((hasLicenseFile && changedFiles.length > 1) || baseRef !== "tiddlywiki-com" ) {
+		  if ((hasLicenseFile && changedFiles.length > 1) || (hasLicenseFile && baseRef !== "tiddlywiki-com") ) {
 			return true;
 		  }
 	
@@ -87,4 +87,4 @@ const rules = [
 	  }
 ];
 
-module.exports = rules;
+export default rules;

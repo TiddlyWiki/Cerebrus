@@ -16,7 +16,16 @@ inputs:
   github_token:
     description: 'GitHub token for API requests.'
     required: true
+  mode:
+    description: 'Mode in which the action will run'
+    required: false
+  pr_size:
+    description: 'Size of empty.html from PR branch'
+    required: 'false'
+  base_size:
+    description: 'Size of empty.html from base branch'
+    required: 'false'
 
 runs:
   using: 'node20'
-  main: bin/ci-pr-validation/validate-branch.js
+  main: bin/ci-pr-validation/index.js

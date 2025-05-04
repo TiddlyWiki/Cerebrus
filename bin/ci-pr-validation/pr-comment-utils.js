@@ -127,4 +127,4 @@ class PRCommentUtils {
 	}
 }
 
-module.exports = PRCommentUtils;
+export default PRCommentUtils;
