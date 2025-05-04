@@ -1,3 +1,35 @@
+/*
+
+# Create temp dirs
+ROOT=$(mktemp -d -t compare-size-XXXXXX)
+MERGE_BASE_DIR="$ROOT/merge-base"
+PR_DIR="$ROOT/pr"
+BASE_DIR="$ROOT/base"
+mkdir -p "$MERGE_BASE_DIR" "$PR_DIR" "$BASE_DIR"
+
+# Clone and fetch refs to find merge base
+git clone -q --no-checkout "$REPO_URL" "$MERGE_BASE_DIR"
+cd "$MERGE_BASE_DIR"
+git fetch origin "$BASE_REF"
+git fetch origin "pull/${PR_NUMBER}/head:${PR_BRANCH}"
+MERGE_BASE_SHA=$(git merge-base "origin/${BASE_REF}" "${PR_BRANCH}")
+echo "Merge base is $MERGE_BASE_SHA"
+
+# Copy repo state to working dirs
+cp -r "$MERGE_BASE_DIR"/* "$PR_DIR"
+cp -r "$MERGE_BASE_DIR"/* "$BASE_DIR"
+
+# Checkout PR branch and merge base
+cd "$PR_DIR"
+git checkout "$PR_BRANCH"
+# --- Run PR build here ---
+
+cd "$BASE_DIR"
+git checkout "$MERGE_BASE_SHA"
+# --- Run base (merge-base) build here ---
+
+*/
+
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -20,7 +52,6 @@ function runSafe(cmd, args, cwd, options = {}) {
 		throw new Error(`❌ Command failed:\n  ${command}\n  cwd: ${cwd}\n  ${err.message}`);
 	}
 }
-
 
 function isSafeGitRef(ref) {
 	return /^[a-zA-Z0-9/_\-.]+$/.test(ref);
