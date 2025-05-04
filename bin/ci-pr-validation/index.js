@@ -24,7 +24,8 @@ Example:
 	`);
 }
 
-let core;
+let core,
+	token;
 
 function parseArgs() {
 	const args = process.argv.slice(2);
@@ -78,7 +79,7 @@ async function getCliContext() {
 	const options = parseArgs();
 	const prNumber = parseInt(options.pr, 10);
 	const repo = options.repo;
-	const token = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
+	token = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
 	const dryRun = options['dry-run'] === 'true';
 	const mode = options.mode || 'rules';
 
@@ -132,7 +133,7 @@ async function runHandler(key, ...args) {
 
 
 async function run(context) {
-	const octokit = new Octokit({ auth: context.token });
+	const octokit = new Octokit({ auth: token });
 
 	console.log(`ℹ️ action mode: ${context.mode}`);
 
@@ -168,9 +169,8 @@ async function run(context) {
 		const repo = core.getInput('repo');
 		const baseRef = core.getInput('base_ref');
 		const mode = core.getInput("mode") || 'rules';
-		const token = core.getInput('github_token');
 		const dryRun = core.getInput('dry_run') === 'true';
-
+		token = core.getInput('github_token');
 		const [owner, repoName] = repo.split('/');
 
 		context = {
@@ -180,7 +180,6 @@ async function run(context) {
 			baseRef,
 			owner,
 			repoName,
-			token,
 			mode,
 			dryRun
 		};
