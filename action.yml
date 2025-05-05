@@ -25,6 +25,11 @@ inputs:
   base_size:
     description: 'Size of empty.html from base branch'
     required: 'false'
+outputs:
+  pr_size:
+    description: 'Size of empty.html from PR branch'
+  base_size:
+    description: 'Size of empty.html from base branch'
 
 runs:
   using: 'node20'

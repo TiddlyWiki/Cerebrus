@@ -182,7 +182,12 @@ async function calculateAndDispatch(context, octokit, dryRun) {
 		} else {
 			console.log(`ℹ️  Dispatching ${EVENT_TYPE} event to ${context.repo}`);
 			console.log(`🔸 Payload:\n${JSON.stringify(eventPayload, null, 2)}`);
-			await dispatchEvent(octokit, context.owner, context.repoName, eventPayload);
+			//await dispatchEvent(octokit, context.owner, context.repoName, eventPayload);
+			if (process.env.GITHUB_ACTIONS === 'true') {
+				const core = await import('@actions/core');
+				core.setOutput("pr_size",sizes.pr_size);
+				core.setOutput("base_size",sizes.base_size);
+			}
 		}
 		return sizes;
 	} catch(err) {
