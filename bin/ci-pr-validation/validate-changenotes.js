@@ -1,7 +1,11 @@
-import { updatePRComment } from './pr-comment-utils.js';
+import PRCommentUtils from './pr-comment-utils.js';
 import { checkNeedsChangeNote, validateChangeNotes as validateNotes, parseChangeNotes as parseNotes } from './changenote.js';
 import fs from 'fs';
 import path from 'path';
+
+const CEREBRUS_IDENTIFIER = "<!-- Cerebrus PR report -->";
+const CHANGENOTE_SECTION_START = "<!-- Change Note Section -->";
+const CHANGENOTE_SECTION_END = "<!-- End Change Note Section -->";
 
 // Parse tiddler file helper
 function parseTiddlerFile(filePath, repoPath) {
@@ -37,6 +41,20 @@ function parseTiddlerFile(filePath, repoPath) {
 	return fields;
 }
 
+// Helper function to replace or append section in existing comment
+function replaceOrAppendSection(existingBody, newSection) {
+	// Check if change note section already exists
+	const sectionRegex = new RegExp(`${CHANGENOTE_SECTION_START}[\\s\\S]*?${CHANGENOTE_SECTION_END}`, 'g');
+	
+	if (sectionRegex.test(existingBody)) {
+		// Replace existing section
+		return existingBody.replace(sectionRegex, newSection);
+	} else {
+		// Append new section
+		return `${existingBody}\n\n${newSection}`;
+	}
+}
+
 export default async function validateChangeNotes(context, octokit, dryRun) {
 	const { owner, repoName, prNumber } = context;
 	
@@ -45,6 +63,8 @@ export default async function validateChangeNotes(context, octokit, dryRun) {
 	// Get current working directory (should be TiddlyWiki5 root)
 	const repoPath = process.cwd();
 	console.log(`Working directory: ${repoPath}`);
+	
+	const utils = new PRCommentUtils(octokit);
 	
 	try {
 		// Get all changed files in the PR
@@ -110,11 +130,25 @@ export default async function validateChangeNotes(context, octokit, dryRun) {
 			}
 		}
 		
-		// Post comment to PR
+		// Post or update comment to PR
 		if (!dryRun) {
-			await updatePRComment(octokit, owner, repoName, prNumber, commentBody, 'Change Note Status');
+			// Wrap content in section markers
+			const sectionedContent = `${CHANGENOTE_SECTION_START}\n\n${commentBody}\n\n${CHANGENOTE_SECTION_END}`;
+			
+			// Check if there's an existing Cerebrus comment
+			const existingComment = await utils.getExistingComment(owner, repoName, prNumber, CEREBRUS_IDENTIFIER);
+			
+			if (existingComment) {
+				// Update existing comment, replacing the change note section
+				const updatedBody = replaceOrAppendSection(existingComment.body, sectionedContent);
+				await utils.updateComment(owner, repoName, prNumber, existingComment.id, updatedBody);
+			} else {
+				// Create new comment with Cerebrus identifier
+				const fullComment = `${CEREBRUS_IDENTIFIER}\n\n${sectionedContent}`;
+				await utils.postComment(owner, repoName, prNumber, fullComment);
+			}
 		} else {
-			console.log('Dry run - would post comment:');
+			console.log('Dry run - would post/update comment:');
 			console.log(commentBody);
 		}
 		
