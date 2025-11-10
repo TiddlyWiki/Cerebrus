@@ -72,7 +72,7 @@ async function applyRules(context, octokit, dryRun) {
 
 // Helper function to replace or append section in existing comment
 function replaceOrAppendSection(existingBody, newSection) {
-	const sectionRegex = new RegExp(`${PATH_VALIDATION_SECTION_START}[\\s\\S]*?${PATH_VALIDATION_SECTION_END}`, 'g');
+	const sectionRegex = new RegExp(`${PATH_VALIDATION_SECTION_START}[\\s\\S]*?${PATH_VALIDATION_SECTION_END}`);
 	
 	if (sectionRegex.test(existingBody)) {
 		return existingBody.replace(sectionRegex, newSection);

@@ -99,7 +99,7 @@ async function commentSize(context, octokit, dryRun) {
 // Helper function to replace or append section in existing comment
 function replaceOrAppendSection(existingBody, newSection) {
     // Check if build size section already exists
-    const sectionRegex = new RegExp(`${BUILD_SIZE_SECTION_START}[\\s\\S]*?${BUILD_SIZE_SECTION_END}`, 'g');
+    const sectionRegex = new RegExp(`${BUILD_SIZE_SECTION_START}[\\s\\S]*?${BUILD_SIZE_SECTION_END}`);
     
     if (sectionRegex.test(existingBody)) {
         // Replace existing section

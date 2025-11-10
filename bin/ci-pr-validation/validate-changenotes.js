@@ -44,7 +44,7 @@ function parseTiddlerFile(filePath, repoPath) {
 // Helper function to replace or append section in existing comment
 function replaceOrAppendSection(existingBody, newSection) {
 	// Check if change note section already exists
-	const sectionRegex = new RegExp(`${CHANGENOTE_SECTION_START}[\\s\\S]*?${CHANGENOTE_SECTION_END}`, 'g');
+	const sectionRegex = new RegExp(`${CHANGENOTE_SECTION_START}[\\s\\S]*?${CHANGENOTE_SECTION_END}`);
 	
 	if (sectionRegex.test(existingBody)) {
 		// Replace existing section
