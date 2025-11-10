@@ -92,10 +92,6 @@ jobs:
 
 ## 🔐 Authentication
 
-```
-
-## 🔐 Authentication
-
 - When using **locally or via CLI**, use `GITHUB_PERSONAL_ACCESS_TOKEN`
 
 ## 🖥️ Local CLI Usage
