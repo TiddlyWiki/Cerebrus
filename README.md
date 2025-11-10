@@ -38,37 +38,70 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    # Path validation (no checkout needed)
+    # Path validation (uses GitHub API - no checkout needed)
     - name: Validate PR Paths
-      uses: TiddlyWiki/cerebrus@v1
+      uses: linonetwo/Cerebrus@feat/check-release-note
       with:
         pr_number: ${{ github.event.pull_request.number }}
         repo: ${{ github.repository }}
-        base_ref: ${{ github.base_ref }}
+        base_ref: ${{ github.event.pull_request.base.ref }}
         github_token: ${{ secrets.GITHUB_TOKEN }}
         mode: rules
       continue-on-error: true
     
-    # Checkout for change note validation
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ github.base_ref }}
-        fetch-depth: 0
-    
-    - name: Fetch PR branch
-      run: |
-        git fetch origin pull/${{ github.event.pull_request.number }}/head:pr-branch
-    
-    # Change note validation
+    # Change note validation (uses GitHub API - no checkout needed)
     - name: Validate Change Notes
-      uses: TiddlyWiki/cerebrus@v1
+      uses: linonetwo/Cerebrus@feat/check-release-note
       with:
         pr_number: ${{ github.event.pull_request.number }}
         repo: ${{ github.repository }}
-        base_ref: ${{ github.base_ref }}
+        base_ref: ${{ github.event.pull_request.base.ref }}
         github_token: ${{ secrets.GITHUB_TOKEN }}
         mode: changenotes
+      continue-on-error: true
+    
+    # Optional: Checkout for build size calculation
+    - name: Check if core files changed
+      id: core-changed
+      uses: dorny/paths-filter@v2
+      with:
+        filters: |
+          core:
+            - 'boot/**'
+            - 'core/**'
+            - 'themes/tiddlywiki/snowwhite/**'
+            - 'themes/tiddlywiki/vanilla/**'
+    
+    - name: Checkout repository (only for build size)
+      if: steps.core-changed.outputs.core == 'true'
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 0
+    
+    - name: Calculate Build Size
+      if: steps.core-changed.outputs.core == 'true'
+      id: build-size
+      uses: linonetwo/Cerebrus@feat/check-release-note
+      with:
+        pr_number: ${{ github.event.pull_request.number }}
+        repo: ${{ github.repository }}
+        base_ref: ${{ github.event.pull_request.base.ref }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        mode: size:calc
+      continue-on-error: true
+    
+    - name: Report Build Size
+      if: steps.core-changed.outputs.core == 'true'
+      uses: linonetwo/Cerebrus@feat/check-release-note
+      with:
+        pr_number: ${{ github.event.pull_request.number }}
+        repo: ${{ github.repository }}
+        base_ref: ${{ github.event.pull_request.base.ref }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        mode: size:comment
+        pr_size: ${{ steps.build-size.outputs.pr_size }}
+        base_size: ${{ steps.build-size.outputs.base_size }}
       continue-on-error: true
 ```
 
@@ -81,10 +114,12 @@ jobs:
 
 **Available modes**:
 
-- `rules` - Path validation (default, no checkout required)
-- `changenotes` - Change note validation (requires checkout)
-- `size:calc` - Build size calculation
+- `rules` - Path validation (uses GitHub API, no checkout required)
+- `changenotes` - Change note validation (uses GitHub API, no checkout required)
+- `size:calc` - Build size calculation (requires checkout)
 - `size:comment` - Build size reporting
+
+**Note**: Both `rules` and `changenotes` modes work entirely through the GitHub API, making them fast and eliminating the need for repository checkout. They can also be easily tested locally using the CLI.
 
 ## ⚙️ Inputs
 

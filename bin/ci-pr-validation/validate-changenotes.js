@@ -1,44 +1,36 @@
 import PRCommentUtils from './pr-comment-utils.js';
-import { checkNeedsChangeNote, validateChangeNotes as validateNotes, parseChangeNotes as parseNotes } from './changenote.js';
-import fs from 'fs';
-import path from 'path';
+import { 
+	checkNeedsChangeNote, 
+	validateChangeNotesFromContent, 
+	parseChangeNotesFromContent,
+	parseTiddlerContent 
+} from './changenote.js';
 
 const CEREBRUS_IDENTIFIER = "<!-- Cerebrus PR report -->";
 const CHANGENOTE_SECTION_START = "<!-- Change Note Section -->";
 const CHANGENOTE_SECTION_END = "<!-- End Change Note Section -->";
 
-// Parse tiddler file helper
-function parseTiddlerFile(filePath, repoPath) {
-	const fullPath = path.join(repoPath, filePath);
-	
-	if (!fs.existsSync(fullPath)) {
+// Fetch file content from GitHub API
+async function fetchFileFromGitHub(octokit, owner, repo, path, ref) {
+	try {
+		const { data } = await octokit.repos.getContent({
+			owner,
+			repo,
+			path,
+			ref,
+		});
+		
+		if (data.type !== 'file') {
+			return null;
+		}
+		
+		// Content is base64 encoded
+		const content = Buffer.from(data.content, 'base64').toString('utf-8');
+		return content;
+	} catch (error) {
+		console.error(`Error fetching ${path}:`, error.message);
 		return null;
 	}
-	
-	const content = fs.readFileSync(fullPath, "utf-8");
-	const lines = content.split("\n");
-	const fields = {};
-	let bodyStartIndex = -1;
-	
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		
-		if (line.trim() === "") {
-			bodyStartIndex = i + 1;
-			break;
-		}
-		
-		const match = line.match(/^([^:]+):\s*(.*)$/);
-		if (match) {
-			fields[match[1]] = match[2];
-		}
-	}
-	
-	if (bodyStartIndex !== -1) {
-		fields.text = lines.slice(bodyStartIndex).join("\n").trim();
-	}
-	
-	return fields;
 }
 
 // Helper function to replace or append section in existing comment
@@ -60,10 +52,6 @@ export default async function validateChangeNotes(context, octokit, dryRun) {
 	
 	console.log('📝 Validating change notes...');
 	
-	// Get current working directory (should be TiddlyWiki5 root)
-	const repoPath = process.cwd();
-	console.log(`Working directory: ${repoPath}`);
-	
 	const utils = new PRCommentUtils(octokit);
 	
 	try {
@@ -74,6 +62,15 @@ export default async function validateChangeNotes(context, octokit, dryRun) {
 			pull_number: prNumber,
 			per_page: 100,
 		});
+		
+		// Get PR details to get head SHA
+		const { data: pr } = await octokit.pulls.get({
+			owner,
+			repo: repoName,
+			pull_number: prNumber,
+		});
+		
+		const headSha = pr.head.sha;
 		
 		const allFiles = files.map(f => f.filename);
 		const releaseNotesFiles = allFiles.filter(f => 
@@ -90,34 +87,52 @@ export default async function validateChangeNotes(context, octokit, dryRun) {
 		let validationPassed = true;
 		
 		if (hasChangeNotes) {
-			// Validate change note format
-			const validation = validateNotes(releaseNotesFiles, repoPath);
-			
-			if (validation.success) {
-				if (needsChangeNote) {
-					// Parse and display change notes
-					const summaries = parseNotes(releaseNotesFiles, repoPath);
-					commentBody = generateSuccessComment(summaries);
-				} else {
-					// Doc only changes with releasenotes files
-					commentBody = generateDocOnlyWithNotesComment();
+			// Fetch files from GitHub API
+			const fileContents = {};
+			for (const file of releaseNotesFiles) {
+				const content = await fetchFileFromGitHub(octokit, owner, repoName, file, headSha);
+				if (content) {
+					fileContents[file] = content;
 				}
+			}
+			
+			// Fetch ReleasesInfo.multids
+			const releasesInfoPath = 'editions/tw5.com/tiddlers/releasenotes/ReleasesInfo.multids';
+			const releasesInfoContent = await fetchFileFromGitHub(octokit, owner, repoName, releasesInfoPath, headSha);
+			
+			if (!releasesInfoContent) {
+				commentBody = generateMissingReleasesInfoComment();
+				validationPassed = false;
 			} else {
-				// Check if we found any actual notes
-				const hasActualNotes = releaseNotesFiles.some(f => {
-					const fields = parseTiddlerFile(f, repoPath);
-					return fields && (fields.tags?.includes('$:/tags/ChangeNote') || fields.tags?.includes('$:/tags/ImpactNote'));
-				});
+				// Validate change note format
+				const validation = validateChangeNotesFromContent(fileContents, releasesInfoContent);
 				
-				if (!hasActualNotes && needsChangeNote) {
-					commentBody = generateMissingNotesComment();
-					validationPassed = false;
-				} else if (!hasActualNotes) {
-					commentBody = generateDocOnlyWithNotesComment();
+				if (validation.success) {
+					if (needsChangeNote) {
+						// Parse and display change notes
+						const summaries = parseChangeNotesFromContent(fileContents);
+						commentBody = generateSuccessComment(summaries);
+					} else {
+						// Doc only changes with releasenotes files
+						commentBody = generateDocOnlyWithNotesComment();
+					}
 				} else {
-					// Validation failed
-					commentBody = generateValidationFailedComment(validation.errors);
-					validationPassed = false;
+					// Check if we found any actual notes
+					const hasActualNotes = Object.values(fileContents).some(content => {
+						const fields = parseTiddlerContent(content);
+						return fields && (fields.tags?.includes('$:/tags/ChangeNote') || fields.tags?.includes('$:/tags/ImpactNote'));
+					});
+					
+					if (!hasActualNotes && needsChangeNote) {
+						commentBody = generateMissingNotesComment();
+						validationPassed = false;
+					} else if (!hasActualNotes) {
+						commentBody = generateDocOnlyWithNotesComment();
+					} else {
+						// Validation failed
+						commentBody = generateValidationFailedComment(validation.errors);
+						validationPassed = false;
+					}
 				}
 			}
 		} else {
@@ -235,4 +250,12 @@ function generateDocOnlyWithNotesComment() {
 	return `## ✅ Change Note Status
 
 This PR contains documentation or configuration changes (including changes to release notes documentation) that typically don't require a change note.`;
+}
+
+function generateMissingReleasesInfoComment() {
+	return `## ❌ Change Note Status
+
+Cannot validate change notes: \`ReleasesInfo.multids\` file not found.
+
+This file is required to validate change note fields. Please ensure it exists in \`editions/tw5.com/tiddlers/releasenotes/\`.`;
 }

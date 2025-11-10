@@ -177,6 +177,15 @@ function parseTiddlerFile(filePath, repoPath) {
 	}
 	
 	const content = fs.readFileSync(fullPath, "utf-8");
+	return parseTiddlerContent(content);
+}
+
+// Parse tiddler content from string (for API usage)
+export function parseTiddlerContent(content) {
+	if (!content) {
+		return null;
+	}
+	
 	const lines = content.split("\n");
 	const fields = {};
 	let bodyStartIndex = -1;
@@ -316,6 +325,86 @@ export function validateChangeNotes(files, repoPath = '.') {
 	return { success: true, errors: [] };
 }
 
+// Validate change notes from content map (for API usage)
+export function validateChangeNotesFromContent(fileContents, releasesInfoContent) {
+	const releasesInfo = parseReleasesInfoContent(releasesInfoContent);
+	const errors = [];
+	
+	for (const [file, content] of Object.entries(fileContents)) {
+		if (!/editions\/.*\/tiddlers\/releasenotes\//.test(file)) {
+			continue;
+		}
+		
+		console.log(`Validating: ${file}`);
+		
+		const fields = parseTiddlerContent(content);
+		if (!fields) {
+			errors.push({
+				file,
+				issues: ["File not found or cannot be read"],
+			});
+			continue;
+		}
+		
+		const fileErrors = [];
+		const tags = fields.tags || "";
+		
+		if (tags.includes("$:/tags/ChangeNote")) {
+			validateChangeNote(fields, fileErrors, releasesInfo);
+		} else if (tags.includes("$:/tags/ImpactNote")) {
+			validateImpactNote(fields, fileErrors, releasesInfo);
+		} else {
+			console.log(`Skipping non-note file: ${file}`);
+			continue;
+		}
+		
+		if (fileErrors.length > 0) {
+			errors.push({ file, issues: fileErrors });
+		}
+	}
+	
+	if (errors.length > 0) {
+		return { success: false, errors };
+	}
+	
+	return { success: true, errors: [] };
+}
+
+// Parse ReleasesInfo from content string (for API usage)
+function parseReleasesInfoContent(content) {
+	const lines = content.split("\n");
+	const changeTypes = new Set();
+	const changeCategories = new Set();
+	const impactTypes = new Set();
+	
+	const patterns = CONFIG.releasesInfoPatterns;
+	
+	for (const line of lines) {
+		let match;
+		
+		match = line.match(patterns.changeType.caption);
+		if (match) {
+			changeTypes.add(match[1]);
+		}
+		
+		match = line.match(patterns.category.caption);
+		if (match) {
+			changeCategories.add(match[1]);
+		}
+		
+		match = line.match(patterns.impactType.caption);
+		if (match) {
+			impactTypes.add(match[1]);
+		}
+	}
+	
+	return {
+		changeTypes: Array.from(changeTypes),
+		changeCategories: Array.from(changeCategories),
+		impactTypes: Array.from(impactTypes),
+	};
+}
+
 function validateChangeNote(fields, fileErrors, releasesInfo) {
 	for (const [fieldName, fieldConfig] of Object.entries(CONFIG.changeNoteFields)) {
 		validateField(fieldName, fields[fieldName], fieldConfig, fileErrors, releasesInfo);
@@ -338,6 +427,28 @@ export function parseChangeNotes(files, repoPath = '.') {
 		}
 		
 		const fields = parseTiddlerFile(file, repoPath);
+		if (!fields) {
+			continue;
+		}
+		
+		const tags = fields.tags || "";
+		
+		if (tags.includes("$:/tags/ChangeNote")) {
+			output.push(formatChangeNote(fields));
+		} else if (tags.includes("$:/tags/ImpactNote")) {
+			output.push(formatImpactNote(fields));
+		}
+	}
+	
+	return output.join("\n");
+}
+
+// Parse and format change notes from content map (for API usage)
+export function parseChangeNotesFromContent(fileContents) {
+	const output = [];
+	
+	for (const [file, content] of Object.entries(fileContents)) {
+		const fields = parseTiddlerContent(content);
 		if (!fields) {
 			continue;
 		}
