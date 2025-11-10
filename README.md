@@ -20,47 +20,36 @@ This GitHub Action validates pull requests to ensure they meet specific conditio
 
 ## 📦 Usage in Workflows
 
-### Path Validation
-
-Add this action to your workflow:
+Combine multiple validations in a single workflow for a unified experience:
 
 ```yaml
-name: Validate PR Paths
+name: PR Validation
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
   validate-pr:
     runs-on: ubuntu-latest
-
+    
     steps:
-    - name: Validate PR
+    # Path validation (no checkout needed)
+    - name: Validate PR Paths
       uses: TiddlyWiki/cerebrus@v1
       with:
         pr_number: ${{ github.event.pull_request.number }}
         repo: ${{ github.repository }}
         base_ref: ${{ github.base_ref }}
         github_token: ${{ secrets.GITHUB_TOKEN }}
-```
-
-### Change Note Validation
-
-Validate that code changes include proper change notes:
-
-```yaml
-name: Validate Change Notes
-
-on:
-  pull_request_target:
-    types: [opened, reopened, synchronize]
-
-jobs:
-  validate-changenotes:
-    runs-on: ubuntu-latest
+        mode: rules
+      continue-on-error: true
     
-    steps:
+    # Checkout for change note validation
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
@@ -71,6 +60,7 @@ jobs:
       run: |
         git fetch origin pull/${{ github.event.pull_request.number }}/head:pr-branch
     
+    # Change note validation
     - name: Validate Change Notes
       uses: TiddlyWiki/cerebrus@v1
       with:
@@ -79,7 +69,22 @@ jobs:
         base_ref: ${{ github.base_ref }}
         github_token: ${{ secrets.GITHUB_TOKEN }}
         mode: changenotes
+      continue-on-error: true
 ```
+
+**Benefits**:
+
+- ✅ Single PR comment with all validation results
+- ✅ No race conditions between validations
+- ✅ Clear execution order
+- ✅ Modular and maintainable
+
+**Available modes**:
+
+- `rules` - Path validation (default, no checkout required)
+- `changenotes` - Change note validation (requires checkout)
+- `size:calc` - Build size calculation
+- `size:comment` - Build size reporting
 
 ## ⚙️ Inputs
 
