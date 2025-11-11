@@ -140,7 +140,8 @@ async function run(context) {
 	const handlers = {
 		"rules": "validate-rules",
 		"size:calc": "build-size-dispatch",
-		"size:comment": "build-size-report"
+		"size:comment": "build-size-report",
+		"changenotes": "validate-changenotes"
 	};
 
 	try {
