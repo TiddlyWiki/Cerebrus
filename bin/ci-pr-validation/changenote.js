@@ -19,6 +19,7 @@ const CONFIG = {
 		/^playwright-report\//,
 		/^test-results\//,
 		/^editions\/.*-docs?\//,
+		/^community\//,
 	],
 	
 	requiresChangeNote: [
