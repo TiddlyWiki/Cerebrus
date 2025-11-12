@@ -197,7 +197,7 @@ jobs:
 
 The valid values for change note fields are defined in your repository's `editions/tw5.com/tiddlers/releasenotes/ReleasesInfo.multids` file.
 
-To add new enum value, edit `ReleasesInfo.multids` in your repository and add entries following the pattern:
+To add a new enum value, edit `ReleasesInfo.multids` in your repository and add entries following the pattern:
 
 ```multids
 change-types/<new-type>/caption: New Type Name
