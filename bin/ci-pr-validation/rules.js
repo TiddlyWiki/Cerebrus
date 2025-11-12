@@ -16,8 +16,11 @@ const rules = [
 		condition: function(baseRef, changedFiles){
 			if(baseRef === 'tiddlywiki-com') {
 				const allInEditions = changedFiles.every(file => file.startsWith('editions/'));
-				const CLAOnly = changedFiles.length === 1 && changedFiles[0].startsWith("licenses/")
-				if(!allInEditions && !CLAOnly) {
+				const CLAOnly = changedFiles.length === 1 && changedFiles[0].startsWith("licenses/");
+				const communityPeople = changedFiles.every(file => 
+					file.startsWith('community/people/') || file.startsWith('licenses/')
+				);
+				if(!allInEditions && !CLAOnly && !communityPeople) {
 					return true
 				}
 			}
@@ -34,8 +37,17 @@ const rules = [
 		id: 2,
 		condition: function(baseRef, changedFiles){
 			if(baseRef === 'master') {
-				const allInEditions = changedFiles.every(file => file.startsWith('editions/'));
-				if(allInEditions) {
+				// Check if all files are documentation-only (editions or community/people)
+				// Exclude release notes - they should target master
+				const allDocumentation = changedFiles.every(file => {
+					// Release notes should target master
+					if (file.match(/editions\/.*\/tiddlers\/releasenotes\//)) {
+						return false;
+					}
+					// Community people cards and editions docs should target tiddlywiki-com
+					return file.startsWith('editions/') || file.startsWith('community/people/');
+				});
+				if(allDocumentation) {
 					return true
 				}
 			}
@@ -44,7 +56,7 @@ const rules = [
 		commentTag: "<!-- editions-folder-warning -->",
 		get message() {
 			return `${this.commentTag}
-⚠️ **Warning**: This PR only modifies documentation (within \`/editions\`). If the changes do not relate to the prerelease, please consider targeting the \`tiddlywiki-com\` branch instead.`
+⚠️ **Warning**: This PR only modifies documentation (within \`/editions\` or \`/community/people\`). If the changes do not relate to the prerelease, please consider targeting the \`tiddlywiki-com\` branch instead.`
 		}
 	},
 	{
