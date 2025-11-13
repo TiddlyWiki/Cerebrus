@@ -20,13 +20,12 @@ const CONFIG = {
 		/^test-results\//,
 		/^editions\/.*-docs?\//,
 		/^community\//,
+		/\/releasenotes\//,
 	],
 	
 	requiresChangeNote: [
 		/\/(core|plugin\.info|modules)\//,
 	],
-	
-	skipReleaseNotes: /\/releasenotes\//,
 	
 	validation: {
 		titlePattern: /^\$:\/changenotes\/[0-9]+\.[0-9]+\.[0-9]+\/(#[0-9]+|[a-f0-9]{40})$/,
@@ -259,22 +258,22 @@ function interpolateMessage(template, values) {
 // Check if files need change notes
 export function checkNeedsChangeNote(files) {
 	for (const file of files) {
+		// Skip files matching skipPatterns (includes releasenotes directory)
 		if (CONFIG.skipPatterns.some(pattern => pattern.test(file))) {
 			continue;
 		}
 		
+		// Check if it's an editions tiddler file
 		if (/^editions\/.*\/tiddlers\/.*\.tid$/.test(file)) {
+			// If it requires a change note (e.g., contains core/modules), flag it
 			if (CONFIG.requiresChangeNote.some(pattern => pattern.test(file))) {
 				return true;
 			}
-			
-			if (CONFIG.skipReleaseNotes.test(file)) {
-				continue;
-			}
-			
+			// Otherwise, editions tiddlers don't require change notes
 			continue;
 		}
 		
+		// All other files require change notes
 		return true;
 	}
 	

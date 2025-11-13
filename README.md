@@ -40,7 +40,7 @@ jobs:
     steps:
     # Step 1: Validate PR paths
     - name: Validate PR Paths
-      uses: TiddlyWiki/cerebrus@v5
+      uses: TiddlyWiki/cerebrus@v6
       with:
         pr_number: ${{ github.event.pull_request.number }}
         repo: ${{ github.repository }}
@@ -51,7 +51,7 @@ jobs:
     
     # Step 2: Validate change notes
     - name: Validate Change Notes
-      uses: TiddlyWiki/cerebrus@v5
+      uses: TiddlyWiki/cerebrus@v6
       with:
         pr_number: ${{ github.event.pull_request.number }}
         repo: ${{ github.repository }}
@@ -91,7 +91,7 @@ jobs:
     steps:
     - name: build-size-check
       id: get_sizes
-      uses: TiddlyWiki/cerebrus@v5
+      uses: TiddlyWiki/cerebrus@v6
       with:
         pr_number: ${{ github.event.pull_request.number }}
         repo: ${{ github.repository }}
@@ -158,7 +158,7 @@ jobs:
 
     steps:
     - name: Build and check size
-      uses: TiddlyWiki/cerebrus@v5
+      uses: TiddlyWiki/cerebrus@v6
       with:
         pr_number: ${{ inputs.pr_number }}
         repo: ${{ github.repository }}
@@ -190,6 +190,20 @@ jobs:
 - `changenotes` - Change note validation (uses GitHub API, no checkout required)
 - `size:calc` - Build size calculation (checkouts and builds PR code in untrusted environment)
 - `size:comment` - Build size reporting (posts results from trusted environment)
+
+## 🔧 Configuration
+
+### Change Note Validation Configuration
+
+The valid values for change note fields are defined in your repository's `editions/tw5.com/tiddlers/releasenotes/ReleasesInfo.multids` file.
+
+To add a new enum value, edit `ReleasesInfo.multids` in your repository and add entries following the pattern:
+
+```multids
+change-types/<new-type>/caption: New Type Name
+categories/<new-category>/caption: New Category Name
+impact-types/<new-impact>/caption: New Impact Type Name
+```
 
 ## ⚙️ Inputs
 
