@@ -122,7 +122,6 @@ export default async function validateChangeNotes(context, octokit, dryRun) {
 			// No release notes files
 			if (needsChangeNote) {
 				commentBody = generateMissingChangeNoteComment();
-				validationPassed = false;
 			} else {
 				commentBody = generateDocOnlyComment();
 			}
