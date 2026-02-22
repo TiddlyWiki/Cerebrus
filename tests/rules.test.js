@@ -1,4 +1,4 @@
-const rules = require('../bin/ci-pr-validation/rules');
+import rules from '../bin/ci-pr-validation/rules.js';
 
 describe('Validation Rules', () => {
 	
