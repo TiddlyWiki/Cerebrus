@@ -114,13 +114,13 @@ const CONFIG = {
 	
 	releasesInfoPatterns: {
 		changeType: {
-			caption: /^change-types\/([^/]+)\/caption:/,
+			caption: /^change-types\/([^/]+)\/(?:caption|singular):/,
 		},
 		category: {
-			caption: /^categories\/([^/]+)\/caption:/,
+			caption: /^categories\/([^/]+)\/(?:caption|singular):/,
 		},
 		impactType: {
-			caption: /^impact-types\/([^/]+)\/caption:/,
+			caption: /^impact-types\/([^/]+)\/(?:caption|singular):/,
 		},
 	},
 };
