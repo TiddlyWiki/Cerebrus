@@ -32,5 +32,5 @@ outputs:
     description: 'Size of empty.html from base branch'
 
 runs:
-  using: 'node20'
+  using: 'node22'
   main: bin/ci-pr-validation/index.js
